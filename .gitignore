@@ -1,4 +1,4 @@
 # Runtime data (auth, sessions, uploads, personal data)
 .application/
 .env
-node_modules/
+*/node_modules/
