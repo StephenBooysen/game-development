@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Harvest Hollow &amp; Mare Copernicus — isometric games</title>
+<link rel="stylesheet" href="./styles/ui.css" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌾</text></svg>" />
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/build/three.module.js",
+    "three/webgpu": "./vendor/three/build/three.module.js",
+    "three/tsl": "./vendor/three/build/three.module.js",
+    "three/addons/": "./vendor/three/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body data-game="lobby">
+
+<canvas id="viewport"></canvas>
+
+<!-- ===================== Lobby ===================== -->
+<div id="lobby" class="lobby" hidden>
+  <header class="lobby-head">
+    <h1 class="lobby-title">Two Worlds</h1>
+    <p class="lobby-sub">Same hands, same seasons, same ledger — a valley and a crater.</p>
+  </header>
+  <div id="shelf" class="shelf"></div>
+  <ul class="lobby-hints">
+    <li><b>Left click</b> use held item &nbsp;·&nbsp; <b>Right click</b> / <b>WASD</b> move</li>
+    <li><b>1–8</b> belt &nbsp;·&nbsp; <b>Q</b>/<b>E</b> rotate &nbsp;·&nbsp; <b>Wheel</b> zoom</li>
+    <li><b>I</b> pack &nbsp;·&nbsp; <b>B</b> shop &nbsp;·&nbsp; <b>J</b> guide &nbsp;·&nbsp; <b>Tab</b> map &nbsp;·&nbsp; <b>Esc</b> menu</li>
+  </ul>
+</div>
+
+<!-- ===================== Loading ===================== -->
+<div id="boot" class="boot" hidden>
+  <div class="boot-inner">
+    <div class="boot-logo">
+      <span id="boot-mark" class="boot-logo-mark">🌾</span>
+      <h1 id="boot-title">Harvest Hollow</h1>
+      <p id="boot-tag" class="boot-tag">a little farm at the edge of the woods</p>
+    </div>
+    <div class="boot-bar"><i id="boot-fill"></i></div>
+    <p id="boot-status" class="boot-status">loading…</p>
+    <p id="boot-error" class="boot-error" hidden></p>
+  </div>
+</div>
+
+<!-- ===================== HUD ===================== -->
+<div id="hud" class="hud" hidden>
+
+  <!-- top left: clock + phase of the calendar -->
+  <div class="panel hud-clock">
+    <div class="clock-face">
+      <canvas id="clock-dial" width="112" height="112"></canvas>
+      <div class="clock-center">
+        <span id="clock-time">6:00a</span>
+        <span id="clock-day">Day 1</span>
+      </div>
+    </div>
+    <div class="season-strip">
+      <span id="phase-icon" class="season-icon">🌱</span>
+      <div>
+        <span id="phase-name" class="season-name">Spring</span>
+        <span id="phase-day" class="season-day">day 1 of 14</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- top right: wallet + vitals -->
+  <div class="hud-right">
+    <div class="panel wallet">
+      <span class="coin">◉</span>
+      <span id="gold-value">500</span>
+      <span id="gold-unit" class="wallet-g">g</span>
+    </div>
+    <div class="panel vitals">
+      <div class="vital">
+        <span id="energy-label" class="vital-label">Energy</span>
+        <div class="meter meter-energy"><i id="energy-fill"></i></div>
+        <span id="energy-value" class="vital-num">100</span>
+      </div>
+      <div class="vital">
+        <span id="reserve-label" class="vital-label">Water</span>
+        <div class="meter meter-water"><i id="reserve-fill"></i></div>
+        <span id="reserve-value" class="vital-num">20</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- centre: contextual tile readout -->
+  <div id="tile-readout" class="tile-readout" hidden></div>
+
+  <!-- toasts -->
+  <div id="toasts" class="toasts"></div>
+
+  <!-- floating world text mounts here -->
+  <div id="floaters" class="floaters"></div>
+
+  <!-- bottom: hotbar -->
+  <div class="hotbar-wrap">
+    <div id="hotbar" class="hotbar"></div>
+    <div class="hotbar-hint">
+      <span id="held-label">Hoe</span>
+      <span class="hint-keys">1–8 · shift+scroll to switch · <b>F</b> fullscreen · <b>M</b> mute</span>
+    </div>
+  </div>
+
+  <!-- left rail buttons -->
+  <div class="rail">
+    <button class="rail-btn" data-panel="inventory" title="Pack (I)">🎒</button>
+    <button class="rail-btn" data-panel="shop" title="Shop (B)">🛒</button>
+    <button class="rail-btn" data-panel="almanac" title="Guide (J)">📖</button>
+    <button class="rail-btn" data-panel="map" title="Map (Tab)">🗺️</button>
+    <button class="rail-btn" data-panel="menu" title="Menu (Esc)">⚙️</button>
+  </div>
+</div>
+
+<!-- ===================== Panels ===================== -->
+<div id="modal-root" class="modal-root" hidden>
+  <div class="modal-scrim" data-close></div>
+
+  <!-- Pack -->
+  <section class="modal panel" data-modal="inventory" hidden>
+    <header class="modal-head">
+      <h2>Backpack</h2>
+      <button class="icon-btn" data-close>✕</button>
+    </header>
+    <div class="modal-body">
+      <div id="inventory-grid" class="inv-grid"></div>
+      <p id="inv-foot" class="modal-foot-note"></p>
+    </div>
+  </section>
+
+  <!-- Shop -->
+  <section class="modal panel wide" data-modal="shop" hidden>
+    <header class="modal-head">
+      <h2>Store</h2>
+      <div class="shop-tabs">
+        <button class="tab is-active" data-shop-tab="grow">Seeds</button>
+        <button class="tab" data-shop-tab="perennial">Orchard</button>
+        <button class="tab" data-shop-tab="upgrade">Upgrades</button>
+        <button class="tab" data-shop-tab="sell">Sell</button>
+      </div>
+      <button class="icon-btn" data-close>✕</button>
+    </header>
+    <div class="modal-body">
+      <div id="shop-list" class="shop-list"></div>
+    </div>
+  </section>
+
+  <!-- Field guide -->
+  <section class="modal panel wide" data-modal="almanac" hidden>
+    <header class="modal-head">
+      <h2>Almanac</h2>
+      <button class="icon-btn" data-close>✕</button>
+    </header>
+    <div class="modal-body">
+      <div id="almanac-body" class="almanac"></div>
+    </div>
+  </section>
+
+  <!-- Map -->
+  <section class="modal panel" data-modal="map" hidden>
+    <header class="modal-head">
+      <h2>Map</h2>
+      <button class="icon-btn" data-close>✕</button>
+    </header>
+    <div class="modal-body map-body">
+      <canvas id="map-canvas" width="512" height="512"></canvas>
+      <p id="map-foot" class="modal-foot-note"></p>
+    </div>
+  </section>
+
+  <!-- Menu -->
+  <section class="modal panel" data-modal="menu" hidden>
+    <header class="modal-head">
+      <h2>Menu</h2>
+      <button class="icon-btn" data-close>✕</button>
+    </header>
+    <div class="modal-body">
+      <div class="settings">
+        <label class="setting"><span>Master volume</span><input id="set-volume" type="range" min="0" max="100" value="70" /></label>
+        <label class="setting"><span>Shadow quality</span>
+          <select id="set-shadows"><option value="high">High</option><option value="medium" selected>Medium</option><option value="off">Off</option></select>
+        </label>
+        <label class="setting"><span>Bloom &amp; grade</span><input id="set-bloom" type="checkbox" checked /></label>
+        <label class="setting"><span>Day length</span>
+          <select id="set-daylength">
+            <option value="240">4 minutes</option>
+            <option value="420" selected>7 minutes</option>
+            <option value="720">12 minutes</option>
+          </select>
+        </label>
+      </div>
+      <div class="menu-actions">
+        <button id="btn-save" class="btn">Save</button>
+        <button id="btn-sleep" class="btn">Sleep until morning</button>
+        <button id="btn-lobby" class="btn">Save &amp; switch game</button>
+        <button id="btn-quit" class="btn btn-danger">Abandon &amp; restart</button>
+      </div>
+      <p id="save-note" class="modal-foot-note"></p>
+    </div>
+  </section>
+</div>
+
+<!-- ===================== Day transition ===================== -->
+<div id="daybreak" class="daybreak" hidden>
+  <div class="daybreak-card">
+    <h2 id="daybreak-title">Day 2</h2>
+    <p id="daybreak-sub">Spring · a clear morning</p>
+    <ul id="daybreak-log" class="daybreak-log"></ul>
+  </div>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>

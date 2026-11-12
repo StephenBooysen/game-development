@@ -1,0 +1,1052 @@
+/* ============================================================================
+   Interface skin, for both games.
+
+   Direction: "painted enamel". Panels are opaque plaques with a hard keyline
+   and a soft cast shadow, the way old signage is made — not glass. Opacity is
+   also the practical answer: the world underneath is bright and saturated, and
+   translucent chrome would be unreadable over it.
+
+   The whole skin is driven by the tokens on :root. A game restates the tokens
+   under its own [data-game] block and inherits every rule below unchanged —
+   which is why Harvest Hollow's enamel green and Copernicus's anodised steel
+   are the same stylesheet and not two of them. Nothing below the token blocks
+   names a colour directly.
+   ========================================================================= */
+
+:root {
+  /* --- palette: seed-packet printing inks --- */
+  --ink:          #241a12;
+  --ink-soft:     #4b3a2a;
+  --enamel:       #2f4a34;
+  --enamel-lit:   #3b5b40;
+  --enamel-deep:  #1c2e20;
+  --cream:        #f6ead2;
+  --cream-dim:    #d9c9a9;
+  --paper:        #efe0c2;
+  --gold:         #e8a33d;
+  --gold-lit:     #ffc978;
+  --beet:         #b8453f;
+  --sky:          #5aa9d6;
+  --leaf:         #7cae4a;
+
+  /* --- surfaces a game re-tints --- */
+  --void:         #10161a;
+  --scrim:        radial-gradient(120% 80% at 50% 12%, #3c5a3f 0%, #21332a 45%, #131c17 100%);
+  --daybreak-bg:  radial-gradient(120% 90% at 50% 30%, rgba(28, 46, 32, 0.9), rgba(8, 12, 9, 0.98));
+  --map-bg:       #1d2b1f;
+  --plate:        rgba(20, 13, 8, 0.86);
+  --meter-a-from: #c8642f;
+  --meter-a-to:   var(--gold-lit);
+  --meter-b-from: #2f6f9c;
+  --meter-b-to:   #86cdf0;
+  --good:         #b6e37a;
+  --bad:          #ff9a92;
+
+  /* --- structure --- */
+  --keyline: 2px solid var(--ink);
+  --plaque-shadow: 0 3px 0 var(--enamel-deep), 0 8px 22px rgba(20, 12, 6, 0.45);
+  --r-lg: 16px;
+  --r-md: 11px;
+  --r-sm: 7px;
+
+  /* --- type --- */
+  --display: "Bahnschrift", "Oswald", "Franklin Gothic Medium", "Trebuchet MS", system-ui, sans-serif;
+  --body: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif;
+  --tally: "Cascadia Mono", "Consolas", ui-monospace, "SF Mono", monospace;
+
+  --hud-gap: clamp(10px, 1.4vw, 20px);
+}
+
+/* --- the lobby belongs to neither game --------------------------------------
+   Only the backdrop and the heading change; the cards carry their own themes,
+   so the shelf shows both palettes against neutral ground rather than putting
+   one of them at home and the other as a visitor. */
+[data-game="lobby"] {
+  --void:   #14161c;
+  --scrim:  radial-gradient(120% 80% at 50% 6%, #2c3038 0%, #1b1e25 48%, #101216 100%);
+  --gold-lit: #f0dcb4;
+  --cream-dim: #9aa0ab;
+}
+
+/* --- Mare Copernicus: anodised aluminium and instrument amber ---------------
+   Cooler, harder and a stop darker than the farm. The keyline goes to near
+   black because the world behind it is near black, and the accent moves from
+   a warm signage gold to the amber of a lit readout. */
+[data-game="lunar"] {
+  --ink:          #0a0d14;
+  --ink-soft:     #2a303c;
+  --enamel:       #2b323e;
+  --enamel-lit:   #3a4250;
+  --enamel-deep:  #171c25;
+  --cream:        #e6edf6;
+  --cream-dim:    #a6b2c4;
+  --paper:        #cdd8e6;
+  --gold:         #e8a53d;
+  --gold-lit:     #ffd27a;
+  --beet:         #c0524a;
+  --sky:          #6fb8e6;
+  --leaf:         #62b39a;
+
+  --void:         #05070c;
+  --scrim:        radial-gradient(120% 80% at 50% 12%, #2b3444 0%, #141a24 45%, #05070c 100%);
+  --daybreak-bg:  radial-gradient(120% 90% at 50% 30%, rgba(30, 40, 56, 0.92), rgba(4, 6, 10, 0.98));
+  --map-bg:       #0a0d14;
+  --plate:        rgba(8, 12, 20, 0.88);
+  --meter-a-from: #3d7f6c;
+  --meter-a-to:   #8fe3c4;
+  --meter-b-from: #b6822a;
+  --meter-b-to:   #ffd27a;
+  --good:         #8fe3c4;
+  --bad:          #ff9a92;
+
+  --plaque-shadow: 0 3px 0 var(--enamel-deep), 0 8px 22px rgba(0, 0, 0, 0.6);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--void);
+  color: var(--cream);
+  font-family: var(--body);
+  -webkit-font-smoothing: antialiased;
+}
+
+body { touch-action: none; }
+
+#viewport {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: crosshair;
+}
+#viewport.is-panning { cursor: grabbing; }
+
+/* Every overlay layer sits above the canvas but must not eat pointer events
+   unless it is genuinely interactive. */
+.hud { pointer-events: none; }
+.hud > *, .rail, .hotbar-wrap { pointer-events: auto; }
+
+/* …except the layers that only ever draw on top of the world. .floaters in
+   particular is a full-screen inset:0 stage, so leaving it clickable makes the
+   entire farm unclickable — every press lands on the overlay instead of the
+   canvas underneath. These need to out-specify the `.hud > *` rule above. */
+.hud > .floaters,
+.hud > .toasts,
+.hud > .tile-readout { pointer-events: none; }
+
+/* ============================ shared bits ============================ */
+
+.panel {
+  background:
+    linear-gradient(180deg, var(--enamel-lit) 0%, var(--enamel) 38%, var(--enamel-deep) 100%);
+  border: var(--keyline);
+  border-radius: var(--r-lg);
+  box-shadow: var(--plaque-shadow);
+  color: var(--cream);
+}
+
+/* The thin highlight along the top edge is what sells "painted metal". */
+.panel::before {
+  content: "";
+  position: absolute;
+  inset: 3px 3px auto 3px;
+  height: 1px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.22);
+  pointer-events: none;
+}
+.panel { position: relative; }
+
+.btn {
+  font-family: var(--display);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  padding: 11px 22px;
+  color: var(--cream);
+  background: linear-gradient(180deg, var(--enamel-lit), var(--enamel-deep));
+  border: var(--keyline);
+  border-radius: var(--r-md);
+  box-shadow: 0 3px 0 var(--ink);
+  cursor: pointer;
+  transition: transform 90ms ease, box-shadow 90ms ease, filter 120ms ease;
+}
+.btn:hover { filter: brightness(1.14); }
+.btn:active { transform: translateY(3px); box-shadow: 0 0 0 var(--ink); }
+.btn-primary {
+  color: var(--ink);
+  background: linear-gradient(180deg, var(--gold-lit), var(--gold));
+}
+.btn-danger { background: linear-gradient(180deg, #d0574f, #8e2f2b); }
+
+.icon-btn {
+  width: 32px; height: 32px;
+  display: grid; place-items: center;
+  font-size: 15px;
+  color: var(--cream);
+  background: rgba(0, 0, 0, 0.25);
+  border: var(--keyline);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+.icon-btn:hover { background: var(--beet); }
+
+:where(button, input, select, [tabindex]):focus-visible {
+  outline: 3px solid var(--gold-lit);
+  outline-offset: 2px;
+}
+
+/* ============================ boot ============================ */
+
+.boot, .lobby {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  background: var(--scrim);
+}
+.boot[hidden] { display: none; }
+
+.boot-inner { text-align: center; padding: 0 24px; max-width: 560px; }
+
+.boot-logo-mark {
+  display: block;
+  font-size: clamp(48px, 9vw, 80px);
+  line-height: 1;
+  filter: drop-shadow(0 6px 0 rgba(0, 0, 0, 0.35));
+}
+
+.boot h1, .lobby-title {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(38px, 7.5vw, 68px);
+  letter-spacing: 0.02em;
+  margin: 12px 0 6px;
+  color: var(--gold-lit);
+  /* stacked ink shadow = painted signage */
+  text-shadow: 0 3px 0 var(--ink), 0 5px 14px rgba(0, 0, 0, 0.5);
+}
+
+.boot-tag, .lobby-sub {
+  font-size: 15px;
+  color: var(--cream-dim);
+  letter-spacing: 0.06em;
+  margin: 0 0 26px;
+}
+
+.boot-bar {
+  width: min(360px, 74vw);
+  height: 14px;
+  margin: 0 auto;
+  background: var(--enamel-deep);
+  border: var(--keyline);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.boot-bar i {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--leaf), var(--gold));
+  transition: width 220ms ease;
+}
+.boot-status {
+  font-family: var(--tally);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--cream-dim);
+  margin-top: 14px;
+}
+.boot-error {
+  font-family: var(--tally);
+  font-size: 12.5px;
+  color: #ffb3ad;
+  background: rgba(120, 30, 26, 0.5);
+  border: 2px solid var(--beet);
+  border-radius: var(--r-md);
+  padding: 12px 14px;
+  margin-top: 18px;
+  text-align: left;
+  white-space: pre-wrap;
+}
+
+.lobby-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.lobby-hints {
+  list-style: none;
+  padding: 0;
+  margin: 30px 0 0;
+  font-size: 13px;
+  line-height: 2;
+  color: var(--cream-dim);
+}
+.lobby-hints b {
+  font-family: var(--tally);
+  font-size: 12px;
+  color: var(--gold-lit);
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+/* ============================ lobby ============================ */
+
+/* The shelf overrides the centred grid it inherits from .boot: on a short
+   window the cards need to scroll, and `place-items: center` would clip the
+   top of the stack rather than let it. */
+.lobby {
+  display: block;
+  place-items: initial;
+  overflow-y: auto;
+  padding: clamp(24px, 5vh, 64px) 24px;
+  text-align: center;
+}
+.lobby[hidden] { display: none; }
+
+.lobby-head { max-width: 720px; margin: 0 auto; }
+.lobby-title { margin-top: 0; }
+
+.shelf {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: clamp(16px, 2.5vw, 28px);
+  max-width: 940px;
+  margin: 0 auto;
+  text-align: left;
+}
+
+/* Each card carries its own [data-game], so the tokens at the top of this file
+   re-tint everything inside it — the shelf previews the two skins side by
+   side before you've picked either. */
+.game-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--enamel-lit) 0%, var(--enamel) 38%, var(--enamel-deep) 100%);
+  border: var(--keyline);
+  border-radius: var(--r-lg);
+  box-shadow: var(--plaque-shadow);
+  color: var(--cream);
+  transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 160ms ease;
+}
+.game-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 0 var(--enamel-deep), 0 16px 34px rgba(0, 0, 0, 0.5);
+}
+
+.game-art {
+  display: grid;
+  place-items: center;
+  height: 132px;
+  background: var(--scrim);
+  border-bottom: var(--keyline);
+}
+.game-mark {
+  font-size: 62px;
+  line-height: 1;
+  filter: drop-shadow(0 5px 0 rgba(0, 0, 0, 0.4));
+}
+
+.game-body { padding: 16px 18px 18px; display: flex; flex-direction: column; flex: 1; }
+
+.game-name {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--gold-lit);
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.45);
+}
+.game-tagline {
+  margin: 3px 0 10px;
+  font-family: var(--tally);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--cream-dim);
+}
+.game-blurb { margin: 0 0 12px; font-size: 13.5px; line-height: 1.5; }
+
+.game-bullets {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 14px;
+  display: grid;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--cream-dim);
+}
+.game-bullets li { padding-left: 16px; position: relative; }
+.game-bullets li::before {
+  content: "◆";
+  position: absolute;
+  left: 0;
+  font-size: 9px;
+  color: var(--gold);
+}
+
+.game-save {
+  margin: 0 0 12px;
+  font-family: var(--tally);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--cream);
+  background: rgba(0, 0, 0, 0.3);
+  border-left: 3px solid var(--gold);
+  border-radius: var(--r-sm);
+  padding: 7px 10px;
+}
+.game-save[hidden] { display: none; }
+
+.game-actions { display: flex; gap: 9px; margin-top: auto; }
+.game-actions .btn { flex: 1; font-size: 14px; padding: 10px 14px; }
+.game-actions .btn[hidden] { display: none; }
+
+.lobby-hints { margin: clamp(22px, 4vh, 40px) auto 0; }
+
+/* ============================ HUD frame ============================ */
+
+.hud { position: fixed; inset: 0; z-index: 20; }
+.hud[hidden] { display: none; }
+
+/* ---- signature element: the enamel sun-dial ---- */
+
+.hud-clock {
+  position: absolute;
+  top: var(--hud-gap);
+  left: var(--hud-gap);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 148px;
+}
+.clock-face { position: relative; display: grid; place-items: center; }
+#clock-dial { display: block; width: 112px; height: 112px; }
+.clock-center {
+  position: absolute;
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  pointer-events: none;
+}
+#clock-time {
+  font-family: var(--display);
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--cream);
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.5);
+}
+#clock-day {
+  font-family: var(--tally);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cream-dim);
+}
+
+.season-strip {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 9px;
+  background: rgba(0, 0, 0, 0.26);
+  border: 2px solid rgba(0, 0, 0, 0.4);
+  border-radius: var(--r-md);
+}
+.season-icon { font-size: 20px; line-height: 1; }
+.season-name {
+  display: block;
+  font-family: var(--display);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+.season-day {
+  display: block;
+  font-family: var(--tally);
+  font-size: 10px;
+  color: var(--cream-dim);
+}
+
+/* ---- wallet + vitals ---- */
+
+.hud-right {
+  position: absolute;
+  top: var(--hud-gap);
+  right: var(--hud-gap);
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  align-items: flex-end;
+}
+
+.wallet {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 9px 16px;
+  font-family: var(--tally);
+}
+.wallet .coin {
+  font-size: 17px;
+  color: var(--gold-lit);
+  text-shadow: 0 0 10px rgba(232, 163, 61, 0.7);
+  align-self: center;
+}
+#gold-value {
+  font-size: 23px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+#gold-value.is-bump { animation: coin-bump 420ms ease; }
+.wallet-g { font-size: 12px; color: var(--cream-dim); }
+
+@keyframes coin-bump {
+  0%   { transform: scale(1);    color: var(--cream); }
+  35%  { transform: scale(1.24); color: var(--gold-lit); }
+  100% { transform: scale(1);    color: var(--cream); }
+}
+
+.vitals { padding: 10px 12px; display: grid; gap: 8px; width: 194px; }
+.vital { display: grid; grid-template-columns: 46px 1fr 30px; align-items: center; gap: 8px; }
+.vital-label {
+  font-family: var(--tally);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cream-dim);
+}
+.vital-num {
+  font-family: var(--tally);
+  font-size: 12px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.meter {
+  height: 11px;
+  background: var(--enamel-deep);
+  border: 2px solid var(--ink);
+  border-radius: 99px;
+  overflow: hidden;
+  box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.5);
+}
+.meter i {
+  display: block;
+  height: 100%;
+  width: 100%;
+  border-radius: 99px;
+  transition: width 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.meter-energy i { background: linear-gradient(90deg, var(--meter-a-from), var(--meter-a-to)); }
+.meter-water i  { background: linear-gradient(90deg, var(--meter-b-from), var(--meter-b-to)); }
+.meter.is-low i { animation: meter-pulse 1s ease-in-out infinite; }
+
+@keyframes meter-pulse { 50% { filter: brightness(1.6); } }
+
+/* ---- tile readout ---- */
+
+.tile-readout {
+  position: absolute;
+  left: 50%;
+  bottom: 152px;
+  transform: translateX(-50%);
+  padding: 7px 15px;
+  font-family: var(--display);
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  color: var(--cream);
+  background: var(--plate);
+  border: var(--keyline);
+  border-radius: 99px;
+  white-space: nowrap;
+}
+.tile-readout[hidden] { display: none; }
+.tile-readout b { color: var(--gold-lit); }
+.tile-readout .warn { color: var(--bad); }
+
+/* ============================ hotbar ============================ */
+
+.hotbar-wrap {
+  position: absolute;
+  left: 50%;
+  bottom: var(--hud-gap);
+  transform: translateX(-50%);
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+}
+
+.hotbar {
+  display: flex;
+  gap: 7px;
+  padding: 8px;
+  background: linear-gradient(180deg, var(--enamel-lit), var(--enamel-deep));
+  border: var(--keyline);
+  border-radius: var(--r-lg);
+  box-shadow: var(--plaque-shadow);
+}
+
+.slot {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.32);
+  border: 2px solid rgba(0, 0, 0, 0.45);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: transform 110ms cubic-bezier(0.34, 1.56, 0.64, 1), border-color 110ms ease, background 110ms ease;
+}
+.slot:hover { background: rgba(0, 0, 0, 0.15); }
+.slot.is-active {
+  border-color: var(--gold-lit);
+  background: rgba(232, 163, 61, 0.2);
+  transform: translateY(-7px);
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.35), 0 0 16px rgba(232, 163, 61, 0.4);
+}
+.slot.is-empty .slot-icon { opacity: 0.22; }
+
+.slot-icon { font-size: 27px; line-height: 1; filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.4)); }
+.slot-key {
+  position: absolute;
+  top: 3px; left: 5px;
+  font-family: var(--tally);
+  font-size: 9.5px;
+  color: var(--cream-dim);
+}
+.slot-count {
+  position: absolute;
+  right: 4px; bottom: 3px;
+  font-family: var(--tally);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cream);
+  text-shadow: 0 1px 0 var(--ink), 0 0 4px var(--ink);
+}
+.slot-wear {
+  position: absolute;
+  left: 5px; right: 5px; bottom: 4px;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+.slot-wear i { display: block; height: 100%; background: var(--sky); }
+
+.hotbar-hint {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--cream-dim);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+#held-label {
+  font-family: var(--display);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--gold-lit);
+}
+.hint-keys b { font-family: var(--tally); color: var(--cream); }
+
+/* ============================ rail ============================ */
+
+.rail {
+  position: absolute;
+  left: var(--hud-gap);
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  gap: 7px;
+}
+.rail-btn {
+  width: 46px;
+  height: 46px;
+  font-size: 21px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, var(--enamel-lit), var(--enamel-deep));
+  border: var(--keyline);
+  border-radius: var(--r-md);
+  box-shadow: 0 3px 0 var(--ink);
+  cursor: pointer;
+  transition: transform 110ms ease, filter 110ms ease;
+}
+.rail-btn:hover { filter: brightness(1.2); transform: translateX(3px); }
+.rail-btn:active { transform: translateY(3px); box-shadow: none; }
+.rail-btn.is-open { background: linear-gradient(180deg, var(--gold-lit), var(--gold)); }
+
+/* ============================ toasts & floaters ============================ */
+
+.toasts {
+  position: absolute;
+  right: var(--hud-gap);
+  bottom: var(--hud-gap);
+  display: grid;
+  gap: 7px;
+  justify-items: end;
+  max-width: 340px;
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 15px;
+  font-size: 13.5px;
+  color: var(--cream);
+  background: var(--plate);
+  border: var(--keyline);
+  border-left: 5px solid var(--leaf);
+  border-radius: var(--r-md);
+  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.5);
+  animation: toast-in 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.toast.is-out { animation: toast-out 260ms ease forwards; }
+.toast .toast-icon { font-size: 17px; }
+.toast.tone-warn { border-left-color: var(--gold); }
+.toast.tone-bad  { border-left-color: var(--beet); }
+.toast.tone-cash { border-left-color: var(--gold-lit); }
+
+@keyframes toast-in  { from { opacity: 0; transform: translateX(26px); } }
+@keyframes toast-out { to   { opacity: 0; transform: translateX(26px); } }
+
+.floaters { position: absolute; inset: 0; overflow: hidden; }
+.floater {
+  position: absolute;
+  font-family: var(--display);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--cream);
+  text-shadow: 0 2px 0 var(--ink), 0 0 10px rgba(0, 0, 0, 0.8);
+  transform: translate(-50%, -50%);
+  animation: float-up 1150ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  white-space: nowrap;
+}
+.floater.tone-cash { color: var(--gold-lit); }
+.floater.tone-bad  { color: var(--bad); }
+.floater.tone-good { color: var(--good); }
+
+@keyframes float-up {
+  0%   { opacity: 0; transform: translate(-50%, -30%)  scale(0.7); }
+  18%  { opacity: 1; transform: translate(-50%, -60%)  scale(1.1); }
+  100% { opacity: 0; transform: translate(-50%, -190%) scale(1); }
+}
+
+/* ============================ modals ============================ */
+
+.modal-root { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; }
+.modal-root[hidden] { display: none; }
+.modal-scrim { position: absolute; inset: 0; background: rgba(10, 7, 4, 0.62); }
+
+.modal {
+  position: relative;
+  width: min(560px, 92vw);
+  max-height: 84vh;
+  display: flex;
+  flex-direction: column;
+  animation: modal-in 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.modal.wide { width: min(880px, 94vw); }
+.modal[hidden] { display: none; }
+
+@keyframes modal-in { from { opacity: 0; transform: translateY(16px) scale(0.98); } }
+
+.modal-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 16px;
+  border-bottom: var(--keyline);
+  background: rgba(0, 0, 0, 0.22);
+  border-radius: 14px 14px 0 0;
+}
+.modal-head h2 {
+  flex: 0 0 auto;
+  margin: 0;
+  font-family: var(--display);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--gold-lit);
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.45);
+}
+.modal-head .icon-btn { margin-left: auto; }
+
+.modal-body { padding: 16px; overflow-y: auto; }
+.modal-foot-note {
+  margin: 14px 0 0;
+  font-size: 12px;
+  color: var(--cream-dim);
+  text-align: center;
+}
+.modal-foot-note b { font-family: var(--tally); color: var(--gold-lit); }
+
+/* thin, in-theme scrollbars */
+.modal-body::-webkit-scrollbar { width: 10px; }
+.modal-body::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.25); border-radius: 99px; }
+.modal-body::-webkit-scrollbar-thumb { background: var(--enamel-lit); border: 2px solid var(--ink); border-radius: 99px; }
+
+/* ---- inventory ---- */
+
+.inv-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: 8px;
+}
+.inv-cell {
+  position: relative;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid rgba(0, 0, 0, 0.45);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: border-color 110ms ease, background 110ms ease, transform 110ms ease;
+}
+.inv-cell:hover { border-color: var(--gold-lit); background: rgba(232, 163, 61, 0.14); transform: translateY(-2px); }
+.inv-cell.is-empty { cursor: default; opacity: 0.4; }
+.inv-cell.is-empty:hover { border-color: rgba(0, 0, 0, 0.45); background: rgba(0, 0, 0, 0.3); transform: none; }
+.inv-icon { font-size: 26px; line-height: 1; }
+.inv-name {
+  font-size: 9.5px;
+  line-height: 1.1;
+  text-align: center;
+  color: var(--cream-dim);
+  padding: 0 3px;
+}
+.inv-count {
+  position: absolute;
+  right: 4px; bottom: 3px;
+  font-family: var(--tally);
+  font-size: 11px;
+  font-weight: 700;
+  text-shadow: 0 1px 0 var(--ink), 0 0 4px var(--ink);
+}
+
+/* ---- shop ---- */
+
+.shop-tabs { display: flex; gap: 5px; margin-left: 6px; flex-wrap: wrap; }
+.tab {
+  font-family: var(--display);
+  font-size: 13px;
+  letter-spacing: 0.05em;
+  padding: 6px 13px;
+  color: var(--cream-dim);
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid rgba(0, 0, 0, 0.45);
+  border-radius: 99px;
+  cursor: pointer;
+  transition: color 110ms ease, background 110ms ease;
+}
+.tab:hover { color: var(--cream); }
+.tab.is-active { color: var(--ink); background: var(--gold); border-color: var(--ink); }
+
+.shop-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+.shop-row {
+  display: grid;
+  grid-template-columns: 46px 1fr auto;
+  align-items: center;
+  gap: 11px;
+  padding: 11px;
+  background: rgba(0, 0, 0, 0.26);
+  border: 2px solid rgba(0, 0, 0, 0.42);
+  border-radius: var(--r-md);
+}
+.shop-row.is-locked { opacity: 0.5; }
+.shop-icon { font-size: 27px; text-align: center; }
+.shop-name { font-family: var(--display); font-size: 15px; letter-spacing: 0.03em; }
+.shop-desc { font-size: 11.5px; color: var(--cream-dim); line-height: 1.35; }
+.shop-price {
+  font-family: var(--tally);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gold-lit);
+  white-space: nowrap;
+}
+.shop-buy {
+  font-family: var(--display);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  padding: 7px 13px;
+  color: var(--ink);
+  background: linear-gradient(180deg, var(--gold-lit), var(--gold));
+  border: var(--keyline);
+  border-radius: var(--r-sm);
+  box-shadow: 0 2px 0 var(--ink);
+  cursor: pointer;
+}
+.shop-buy:hover { filter: brightness(1.1); }
+.shop-buy:active { transform: translateY(2px); box-shadow: none; }
+.shop-buy:disabled { filter: grayscale(0.8); cursor: not-allowed; opacity: 0.6; }
+.shop-empty { grid-column: 1 / -1; text-align: center; color: var(--cream-dim); padding: 32px 0; font-size: 13.5px; }
+
+/* ---- almanac ---- */
+
+.almanac { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 11px; }
+.almanac-card {
+  padding: 13px;
+  background: rgba(0, 0, 0, 0.26);
+  border: 2px solid rgba(0, 0, 0, 0.42);
+  border-radius: var(--r-md);
+}
+.almanac-card h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-family: var(--display);
+  font-size: 16px;
+  letter-spacing: 0.04em;
+  color: var(--gold-lit);
+}
+.almanac-card dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 12px; }
+.almanac-card dt { color: var(--cream-dim); }
+.almanac-card dd { margin: 0; font-family: var(--tally); text-align: right; }
+.almanac-seasons { display: flex; gap: 4px; margin-top: 9px; }
+.almanac-seasons span {
+  flex: 1;
+  text-align: center;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 0;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--cream-dim);
+}
+.almanac-seasons span.on { background: var(--leaf); color: var(--ink); font-weight: 700; }
+
+/* ---- map ---- */
+
+.map-body { display: grid; justify-items: center; }
+#map-canvas {
+  width: min(512px, 78vw);
+  height: auto;
+  image-rendering: pixelated;
+  border: var(--keyline);
+  border-radius: var(--r-md);
+  background: var(--map-bg);
+}
+
+/* ---- settings ---- */
+
+.settings { display: grid; gap: 11px; }
+.setting {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 13px;
+  font-size: 13.5px;
+  background: rgba(0, 0, 0, 0.26);
+  border: 2px solid rgba(0, 0, 0, 0.42);
+  border-radius: var(--r-md);
+}
+.setting select, .setting input[type="range"] { accent-color: var(--gold); }
+.setting select {
+  font-family: var(--body);
+  font-size: 13px;
+  padding: 5px 9px;
+  color: var(--cream);
+  background: var(--enamel-deep);
+  border: 2px solid var(--ink);
+  border-radius: var(--r-sm);
+}
+.setting input[type="checkbox"] { width: 18px; height: 18px; }
+.menu-actions { display: flex; gap: 9px; flex-wrap: wrap; margin-top: 16px; }
+.menu-actions .btn { flex: 1 1 auto; font-size: 14px; padding: 10px 16px; }
+
+/* ============================ daybreak ============================ */
+
+.daybreak {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background: var(--daybreak-bg);
+  animation: fade-in 380ms ease;
+}
+.daybreak[hidden] { display: none; }
+.daybreak.is-out { animation: fade-out 480ms ease forwards; }
+
+@keyframes fade-in  { from { opacity: 0; } }
+@keyframes fade-out { to   { opacity: 0; } }
+
+.daybreak-card { text-align: center; padding: 0 24px; }
+.daybreak-card h2 {
+  font-family: var(--display);
+  font-size: clamp(40px, 9vw, 74px);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  margin: 0;
+  color: var(--gold-lit);
+  text-shadow: 0 4px 0 var(--ink), 0 6px 20px rgba(0, 0, 0, 0.6);
+  animation: rise 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+#daybreak-sub {
+  font-size: 15px;
+  letter-spacing: 0.1em;
+  color: var(--cream-dim);
+  margin: 6px 0 22px;
+  animation: rise 620ms cubic-bezier(0.22, 1, 0.36, 1) 90ms both;
+}
+.daybreak-log { list-style: none; padding: 0; margin: 0; display: grid; gap: 7px; justify-items: center; }
+.daybreak-log li {
+  font-size: 14px;
+  color: var(--cream);
+  padding: 7px 18px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 99px;
+  animation: rise 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.daybreak-log li:nth-child(1) { animation-delay: 180ms; }
+.daybreak-log li:nth-child(2) { animation-delay: 260ms; }
+.daybreak-log li:nth-child(3) { animation-delay: 340ms; }
+.daybreak-log li:nth-child(4) { animation-delay: 420ms; }
+.daybreak-log li:nth-child(5) { animation-delay: 500ms; }
+
+@keyframes rise { from { opacity: 0; transform: translateY(20px); } }
+
+/* ============================ responsive ============================ */
+
+@media (max-width: 900px) {
+  .rail { top: auto; bottom: 118px; left: var(--hud-gap); transform: none; grid-auto-flow: column; }
+  .vitals { width: 168px; }
+  .hud-clock { width: 128px; }
+  #clock-dial { width: 92px; height: 92px; }
+  .slot { width: 50px; height: 50px; }
+  .slot-icon { font-size: 22px; }
+  .tile-readout { bottom: 178px; font-size: 12.5px; }
+}
+
+@media (max-width: 560px) {
+  .hotbar { gap: 4px; padding: 5px; }
+  .slot { width: 42px; height: 42px; border-radius: var(--r-sm); }
+  .slot-icon { font-size: 19px; }
+  .hotbar-hint .hint-keys { display: none; }
+  .rail-btn { width: 40px; height: 40px; font-size: 18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
