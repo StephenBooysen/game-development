@@ -1,0 +1,22 @@
+{
+  "name": "space-trader",
+  "version": "0.1.0",
+  "description": "Void Merchant - a turn-based web space trading game built on nooblyjs-core",
+  "private": true,
+  "license": "ISC",
+  "type": "commonjs",
+  "main": "app.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node app.js",
+    "dev": "node --watch-path=./src --watch-path=./app.js app.js",
+    "test": "node --test \"test/**/*.test.js\""
+  },
+  "dependencies": {
+    "express": "^4.22.3",
+    "helmet": "^8.3.0",
+    "nooblyjs-core": "file:../../nooblyjs-core"
+  }
+}
