@@ -30,6 +30,7 @@ export const api = {
   setup: () => request('GET', '/setup'),
   hallOfFame: () => request('GET', '/halloffame'),
   createGame: (input) => request('POST', '/games', input),
+  restoreGame: (state) => request('POST', '/games/restore', { state }),
   game: (id) => request('GET', `/games/${encodeURIComponent(id)}`),
   summary: (id) => request('GET', `/games/${encodeURIComponent(id)}/summary`),
   /** POST (or DELETE) to an action route under /games/:id. */

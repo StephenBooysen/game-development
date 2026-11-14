@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const { makeRng, seeded } = require('../src/engine/random');
-const { createGame } = require('../src/game/newGame');
+const { createGame, validateSavedGame } = require('../src/game/newGame');
 const actions = require('../src/game/actions');
 const { buildView } = require('../src/game/view');
 const { quote } = require('../src/engine/market');
@@ -209,4 +209,38 @@ test('the map prices every good for a run, from intel or typical prices', () => 
   const seen = kordo();
   assert.equal(seen.source, 'seen');
   assert.equal(seen.rows.find((r) => r.id === 'food').sellThere, game.intel.kordo.prices.food.sell);
+});
+
+test('validateSavedGame validates, clamps and normalises saved states', () => {
+  const game = newGame();
+  const valid = validateSavedGame(game);
+  assert.equal(valid.id, game.id);
+  assert.equal(valid.name, 'Tester');
+  assert.equal(valid.credits, 1000);
+
+  // Clamping skills and defaults
+  const untrusted = {
+    ...game,
+    day: -10,
+    credits: -50,
+    skills: { navigation: 99, battle: -5, trading: 5 },
+    ship: { ...game.ship, equipment: ['pulse', 'nonexistent-weapon'] }
+  };
+  const normalised = validateSavedGame(untrusted);
+  assert.equal(normalised.day, 1);
+  assert.equal(normalised.credits, 0);
+  assert.equal(normalised.skills.navigation, 10);
+  assert.equal(normalised.skills.battle, 1);
+  assert.deepEqual(normalised.ship.equipment, ['pulse']);
+});
+
+test('validateSavedGame rejects invalid or corrupted states', () => {
+  const game = newGame();
+  assert.throws(() => validateSavedGame(null), /expected a game object/);
+  assert.throws(() => validateSavedGame({ ...game, id: 'bad-id' }), /missing or invalid game ID/);
+  assert.throws(() => validateSavedGame({ ...game, name: '' }), /missing commander name/);
+  assert.throws(() => validateSavedGame({ ...game, difficulty: 'impossible' }), /unknown difficulty/);
+  assert.throws(() => validateSavedGame({ ...game, status: 'flying' }), /unknown game status/);
+  assert.throws(() => validateSavedGame({ ...game, location: 'earth' }), /unknown system location/);
+  assert.throws(() => validateSavedGame({ ...game, ship: { type: 'death-star' } }), /missing or unknown ship hull/);
 });

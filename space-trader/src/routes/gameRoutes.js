@@ -85,15 +85,31 @@ function createGameRoutes({ games, logger, eventEmitter }) {
   }), async (req, res) => {
     try {
       const { name, difficulty, skills } = req.body;
-      res.status(201).json({ game: await games.create({ name, difficulty, skills }) });
+      const { view, state } = await games.create({ name, difficulty, skills });
+      res.status(201).json({ game: view, state });
     } catch (err) {
       fail(res, err, 'create game');
     }
   });
 
+  router.post('/games/restore', validate({
+    body: {
+      state: { type: 'object', required: true }
+    }
+  }), async (req, res) => {
+    try {
+      const { view, state } = await games.restore(req.body.state);
+      res.status(200).json({ game: view, state });
+    } catch (err) {
+      fail(res, err, 'restore game');
+    }
+  });
+
   router.get('/games/:id', validate({ params: { id } }), async (req, res) => {
     try {
-      res.json({ game: await games.view(req.params.id) });
+      const game = await games.load(req.params.id);
+      const view = await games.view(req.params.id);
+      res.json({ game: view, state: game });
     } catch (err) {
       fail(res, err, 'load game');
     }

@@ -1,6 +1,6 @@
 'use strict';
 
-const { createGame } = require('./newGame');
+const { createGame, validateSavedGame } = require('./newGame');
 const actions = require('./actions');
 const { buildView, summaryView } = require('./view');
 const { makeRng } = require('../engine/random');
@@ -48,9 +48,9 @@ class GameService {
   }
 
   /**
-   * Registers a new commander and returns the game view.
+   * Registers a new commander and returns the game view and state.
    * @param {{name: string, difficulty: string, skills: Object}} input
-   * @return {Promise<Object>}
+   * @return {Promise<{view: Object, state: Object}>}
    */
   async create(input) {
     const game = createGame(input, this.rng);
@@ -59,7 +59,23 @@ class GameService {
     await this.dataService.update(GAMES, id, game);
     await this.cache.put(cacheKey(id), structuredClone(game));
     this.logger?.info(`[GameService] New commander ${game.name}`, { gameId: id, difficulty: game.difficulty });
-    return buildView(game);
+    return { view: buildView(game), state: game };
+  }
+
+  /**
+   * Restores a game state from client backup (e.g. after redeployment).
+   * @param {Object} rawState
+   * @return {Promise<{view: Object, state: Object}>}
+   */
+  async restore(rawState) {
+    const game = validateSavedGame(rawState);
+    const id = game.id;
+    return this.withLock(id, async () => {
+      game.updatedAt = new Date().toISOString();
+      await this.save(game);
+      this.logger?.info(`[GameService] Restored commander ${game.name}`, { gameId: id, day: game.day });
+      return { view: buildView(game), state: game };
+    });
   }
 
   /**
@@ -104,7 +120,7 @@ class GameService {
       if (name !== 'buy' && name !== 'sell') {
         this.logger?.info(`[GameService] ${name}`, { gameId: id, day: game.day, status: game.status });
       }
-      return { game: buildView(game), notice: result.notice || null };
+      return { game: buildView(game), state: game, notice: result.notice || null };
     });
   }
 
@@ -153,7 +169,22 @@ class GameService {
   }
 
   async save(game) {
-    await this.dataService.update(GAMES, game.id, game);
+    const updated = await this.dataService.update(GAMES, game.id, game);
+    if (!updated) {
+      if (this.dataService.provider && typeof this.dataService.provider._withContainerLock === 'function') {
+        await this.dataService.provider._withContainerLock(GAMES, async () => {
+          const data = await this.dataService.provider._readContainerData(GAMES);
+          data[game.id] = game;
+          await this.dataService.provider._writeContainerData(GAMES, data);
+        });
+      } else {
+        const newId = await this.dataService.add(GAMES, game);
+        if (newId !== game.id) {
+          game.id = newId;
+          await this.dataService.update(GAMES, newId, game);
+        }
+      }
+    }
     await this.cache.put(cacheKey(game.id), structuredClone(game));
   }
 

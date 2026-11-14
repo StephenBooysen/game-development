@@ -52,9 +52,10 @@ async function createApp(overrides = {}) {
     }
   });
 
-  const logger = serviceRegistry.logger(config.logToConsole ? 'memory' : 'file', { logDir: config.logDir });
-  const cache = serviceRegistry.cache('memory');
-  const dataService = serviceRegistry.dataService('file', { dataDir: config.dataDir });
+  const instanceName = config.instanceName || 'default';
+  const logger = serviceRegistry.logger(config.logToConsole ? 'memory' : 'file', { logDir: config.logDir, instanceName });
+  const cache = serviceRegistry.cache('memory', { instanceName });
+  const dataService = serviceRegistry.dataService('file', { dataDir: config.dataDir, instanceName });
 
   const games = new GameService({ dataService, cache, logger });
   await games.init();

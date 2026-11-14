@@ -65,6 +65,7 @@ All endpoints are JSON under `/api`.
 | GET | `/setup` | Difficulties, skill rules, starter ship |
 | GET | `/halloffame` | Top 10 finished games |
 | POST | `/games` | `{ name, difficulty, skills: { navigation, battle, trading } }` |
+| POST | `/games/restore` | `{ state }` (restores saved game from client localStorage) |
 | GET | `/games/:id` | Full game view |
 | GET | `/games/:id/summary` | Short summary for the title screen |
 | POST | `/games/:id/market/buy` · `/market/sell` | `{ good, qty }` |
