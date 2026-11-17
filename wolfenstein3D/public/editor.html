@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101411">
+  <title>Map editor / Castle Noobenstein</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="console editor">
+    <header class="masthead">
+      <a class="brand" href="./" aria-label="Back to Castle Noobenstein"><span class="emblem" aria-hidden="true">N</span> CASTLE NOOBENSTEIN</a>
+      <span class="edition">MAP EDITOR</span>
+    </header>
+    <div class="mission-bar"><span>DRAW A MAP, THEN PLAY IT</span><span id="hover-info">HOVER OVER A TILE</span></div>
+    <div class="editor-layout">
+      <section class="editor-board" aria-label="Map grid">
+        <canvas id="board" tabindex="0" aria-label="Map grid. Click or drag to paint the selected tile. Right-click to erase."></canvas>
+        <p class="manual-note">Click or drag to paint. Right-click to erase. Changes are kept in this browser.</p>
+      </section>
+      <aside class="editor-tools">
+        <label class="field">Map name <input id="map-name" maxlength="30"></label>
+        <h2 class="tool-title">Tiles</h2>
+        <div id="palette" class="palette"></div>
+        <h2 class="tool-title">Checks</h2>
+        <ul id="problems" class="problems"></ul>
+        <div class="buttons">
+          <button id="play" type="button">Play this map</button>
+          <button id="new-map" type="button">New empty map</button>
+        </div>
+        <div class="size-row">
+          <label class="field">Width <input id="new-width" type="number" min="6" max="64" value="24"></label>
+          <label class="field">Height <input id="new-height" type="number" min="6" max="64" value="18"></label>
+        </div>
+        <label class="field">Start from a built-in map <select id="load-map"></select></label>
+        <h2 class="tool-title">As text</h2>
+        <textarea id="map-text" rows="12" spellcheck="false" aria-label="The map as text"></textarea>
+        <div class="buttons">
+          <button id="apply-text" type="button">Use this text</button>
+          <button id="download-map" type="button">Download .map file</button>
+        </div>
+        <p class="manual-note">This is a <kbd>.map</kbd> file. To add it to the game, save it in the <kbd>maps/</kbd> folder (files play in name order, so call it e.g. <kbd>04-my-map.map</kbd>) and reload the page.</p>
+      </aside>
+    </div>
+    <footer class="console-footer"><span><span class="status-dot" aria-hidden="true"></span> MAP EDITOR</span><a class="back-link" href="./">Back to the game</a></footer>
+  </main>
+  <script type="module" src="editor.js"></script>
+</body>
+</html>

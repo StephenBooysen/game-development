@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101411">
+  <title>Castle Noobenstein</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="console">
+    <header class="masthead">
+      <a class="brand" href="./" aria-label="Castle Noobenstein home"><span class="emblem" aria-hidden="true">N</span> CASTLE NOOBENSTEIN</a>
+      <span class="edition">FIRST-PERSON / FIELD EDITION</span>
+    </header>
+    <div class="mission-bar"><span id="mission-label">OPERATION: BREAKOUT</span><span id="mission-status">AWAITING DEPLOYMENT</span></div>
+    <div id="game">
+      <canvas id="view" width="480" height="300" tabindex="0" aria-label="First-person game view. WASD to move, mouse or arrow keys to turn, Space to fire, E to interact, P to pause."></canvas>
+
+      <!-- Reused for the briefing, pause, death and victory screens. -->
+      <section id="screen" class="screen" aria-labelledby="screen-title">
+        <div class="screen-layout">
+          <div class="briefing">
+            <p class="eyebrow" id="screen-kicker">MISSION BRIEFING / 01</p>
+            <h1 id="screen-title">Castle Noobenstein</h1>
+            <p id="screen-text"></p>
+            <ul id="screen-stats" class="stats"></ul>
+            <div id="screen-buttons" class="buttons"></div>
+            <p class="field-note">NO BACKUP. FIND THE KEY. MAKE IT OUT.</p>
+          </div>
+          <aside id="controls" class="field-guide" aria-labelledby="controls-title">
+            <h2 id="controls-title">FIELD MANUAL <span>01—08</span></h2>
+            <dl class="controls">
+              <div><dt><kbd>W A S D</kbd></dt><dd>Move &amp; sidestep</dd></div>
+              <div><dt><kbd>Mouse / ← →</kbd></dt><dd>Look around</dd></div>
+              <div><dt><kbd>Click / Space</kbd></dt><dd>Fire weapon</dd></div>
+              <div><dt><kbd>E</kbd></dt><dd>Door / elevator / push a secret wall</dd></div>
+              <div><dt><kbd>Shift</kbd></dt><dd>Run</dd></div>
+              <div><dt><kbd>1–4 / Q / Wheel</kbd></dt><dd>Select weapon</dd></div>
+              <div><dt><kbd>M / N</kbd></dt><dd>Map / sound</dd></div>
+              <div><dt><kbd>P / Esc</kbd></dt><dd>Pause</dd></div>
+            </dl>
+            <p class="manual-note">Click the view to capture your mouse. Press Esc to release it. Keyboard and mouse required. Save your game from the pause menu.</p>
+          </aside>
+        </div>
+      </section>
+    </div>
+    <footer class="console-footer"><span><span class="status-dot" aria-hidden="true"></span> SOLO CAMPAIGN <span class="footer-detail">/ THREE MAPS / ONE WAY OUT</span></span><span><kbd>E</kbd> INTERACT <span class="footer-detail">&nbsp; <kbd>P</kbd> PAUSE</span></span></footer>
+  </main>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
